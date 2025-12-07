@@ -8,6 +8,40 @@ static NSString * const kSimpleSwitchDemoEnabledKey = @"com.wechat.simpleswitch.
 // 这个文件可以作为额外的 Hook 示例
 // 展示如何在其他界面中使用 SimpleSwitch
 
+// 辅助函数：添加 SimpleSwitch 到视图控制器
+static void addSimpleSwitchToViewController(UIViewController *viewController) {
+    if (!viewController || !viewController.view) {
+        return;
+    }
+    
+    // 检查是否已经添加过
+    for (UIView *subview in viewController.view.subviews) {
+        if ([subview isKindOfClass:[SimpleSwitch class]]) {
+            return; // 已经添加过了
+        }
+    }
+    
+    // 创建 SimpleSwitch
+    CGPoint center = CGPointMake(viewController.view.bounds.size.width - 40, 100);
+    SimpleSwitch *simpleSwitch = [[SimpleSwitch alloc] initWithCenter:center];
+    
+    // 读取当前状态
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    BOOL isEnabled = [defaults boolForKey:kSimpleSwitchDemoEnabledKey];
+    [simpleSwitch setOn:isEnabled animated:NO];
+    
+    // 设置回调
+    simpleSwitch.changeAction = ^(BOOL isOn) {
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        [defaults setBool:isOn forKey:kSimpleSwitchDemoEnabledKey];
+        [defaults synchronize];
+        
+        NSLog(@"SimpleSwitch 状态改变: %@", isOn ? @"开启" : @"关闭");
+    };
+    
+    [viewController.view addSubview:simpleSwitch];
+}
+
 %hook UIViewController
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -29,41 +63,10 @@ static NSString * const kSimpleSwitchDemoEnabledKey = @"com.wechat.simpleswitch.
             [addedControllers addObject:controllerKey];
             
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                [self addSimpleSwitchIfNeeded];
+                addSimpleSwitchToViewController(self);
             });
         }
     }
-}
-
-%new
-- (void)addSimpleSwitchIfNeeded {
-    // 检查是否已经添加过
-    for (UIView *subview in self.view.subviews) {
-        if ([subview isKindOfClass:[SimpleSwitch class]]) {
-            return; // 已经添加过了
-        }
-    }
-    
-    // 创建 SimpleSwitch
-    CGPoint center = CGPointMake(self.view.bounds.size.width - 40, 100);
-    SimpleSwitch *simpleSwitch = [[SimpleSwitch alloc] initWithCenter:center];
-    
-    // 读取当前状态
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    BOOL isEnabled = [defaults boolForKey:kSimpleSwitchDemoEnabledKey];
-    [simpleSwitch setOn:isEnabled animated:NO];
-    
-    // 设置回调
-    __weak typeof(simpleSwitch) weakSwitch = simpleSwitch;
-    simpleSwitch.changeAction = ^(BOOL isOn) {
-        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-        [defaults setBool:isOn forKey:kSimpleSwitchDemoEnabledKey];
-        [defaults synchronize];
-        
-        NSLog(@"SimpleSwitch 状态改变: %@", isOn ? @"开启" : @"关闭");
-    };
-    
-    [self.view addSubview:simpleSwitch];
 }
 
 %end
