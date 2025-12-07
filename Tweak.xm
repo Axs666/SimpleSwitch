@@ -57,15 +57,24 @@ static void SSPresentDemoPanelFromController(UIViewController *hostController) {
     if (!hostController) {
         return;
     }
-    UIViewController *controller = [[SimpleSwitchDemoViewController alloc] init];
-    if (!controller) {
-        return;
-    }
-    if (hostController.navigationController) {
-        [hostController.navigationController pushViewController:controller animated:YES];
-    } else {
-        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:controller];
-        [hostController presentViewController:nav animated:YES completion:nil];
+    @try {
+        UIViewController *controller = [[SimpleSwitchDemoViewController alloc] init];
+        if (!controller) {
+            NSLog(@"[SimpleSwitchPlugin] 创建 SimpleSwitchDemoViewController 失败");
+            return;
+        }
+        if (hostController.navigationController) {
+            [hostController.navigationController pushViewController:controller animated:YES];
+        } else {
+            UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:controller];
+            if (nav) {
+                [hostController presentViewController:nav animated:YES completion:nil];
+            } else {
+                NSLog(@"[SimpleSwitchPlugin] 创建 UINavigationController 失败");
+            }
+        }
+    } @catch (NSException *exception) {
+        NSLog(@"[SimpleSwitchPlugin] 显示演示面板失败: %@", exception);
     }
 }
 
@@ -226,7 +235,11 @@ static void SSAddTapMethodToNewSettingViewController(void) {
     }
     
     IMP imp = imp_implementationWithBlock(^(id self) {
-        SSPresentDemoPanelFromController(self);
+        @try {
+            SSPresentDemoPanelFromController(self);
+        } @catch (NSException *exception) {
+            NSLog(@"[SimpleSwitchPlugin] 点击处理异常: %@", exception);
+        }
     });
     
     class_addMethod(cls, selector, imp, "v@:");
