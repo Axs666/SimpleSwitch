@@ -34,6 +34,13 @@ static NSString * const kSimpleSwitchDemoEnabledKey = @"com.wechat.simpleswitch.
         }
         simpleSwitch.translatesAutoresizingMaskIntoConstraints = NO;
         simpleSwitch.userInteractionEnabled = YES; // 确保可以交互
+        simpleSwitch.multipleTouchEnabled = NO; // 禁用多点触控
+        simpleSwitch.exclusiveTouch = YES; // 独占触摸
+        
+        NSLog(@"[SimpleSwitchPlugin] 创建开关: frame=%@, userInteractionEnabled=%@, superview=%@", 
+              NSStringFromCGRect(simpleSwitch.frame), 
+              @(simpleSwitch.userInteractionEnabled),
+              simpleSwitch.superview);
         
         // 读取当前状态
         NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
