@@ -1,5 +1,6 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
+#import <objc/message.h>
 #import "Sources/SimpleSwitch.h"
 #import "Sources/SimpleSwitchDemoViewController.h"
 
@@ -69,9 +70,9 @@ static void SSPresentDemoPanelFromController(UIViewController *hostController) {
 }
 
 // 前向声明类型
-@class NewSettingViewController, WCTableViewManager, WCTableViewSectionManager, WCTableViewNormalCellManager;
+@class NewSettingViewController;
 
-static WCTableViewManager *SSSettingsTableManager(id controller) {
+static id SSSettingsTableManager(id controller) {
     if (!controller) {
         return nil;
     }
@@ -83,7 +84,7 @@ static WCTableViewManager *SSSettingsTableManager(id controller) {
         }
         id value = object_getIvar(controller, ivar);
         if (value) {
-            return (WCTableViewManager *)value;
+            return value;
         }
     }
     return nil;
@@ -98,28 +99,58 @@ static void SSEnsureSettingsEntry(id controller) {
     if (objc_getAssociatedObject(controller, kSSSettingsEntryAssociatedKey)) {
         return;
     }
-    WCTableViewManager *manager = SSSettingsTableManager(controller);
+    id manager = SSSettingsTableManager(controller);
     if (!manager) {
         return;
     }
-    WCTableViewSectionManager *section = [manager getSectionAt:0];
+    
+    // 使用运行时调用 getSectionAt:
+    SEL getSectionSelector = @selector(getSectionAt:);
+    if (![manager respondsToSelector:getSectionSelector]) {
+        return;
+    }
+    id section = ((id (*)(id, SEL, NSInteger))objc_msgSend)(manager, getSectionSelector, 0);
     if (!section) {
         return;
     }
+    
     Class cellManagerClass = objc_getClass("WCTableViewNormalCellManager");
     if (!cellManagerClass) {
         return;
     }
-    WCTableViewNormalCellManager *cell = [cellManagerClass normalCellForSel:@selector(ss_onSimpleSwitchSettingsEntryTapped)
-                                                                     target:controller
-                                                                      title:kSSPluginDisplayName
-                                                                 rightValue:kSSPluginVersion
-                                                              accessoryType:1];
+    
+    // 使用运行时调用 normalCellForSel:target:title:rightValue:accessoryType:
+    SEL normalCellSelector = @selector(normalCellForSel:target:title:rightValue:accessoryType:);
+    if (![cellManagerClass respondsToSelector:normalCellSelector]) {
+        return;
+    }
+    
+    id cell = ((id (*)(Class, SEL, SEL, id, NSString *, NSString *, NSInteger))objc_msgSend)(
+        cellManagerClass,
+        normalCellSelector,
+        @selector(ss_onSimpleSwitchSettingsEntryTapped),
+        controller,
+        kSSPluginDisplayName,
+        kSSPluginVersion,
+        1
+    );
+    
     if (!cell) {
         return;
     }
-    [section addCell:cell];
-    [manager reloadTableView];
+    
+    // 使用运行时调用 addCell:
+    SEL addCellSelector = @selector(addCell:);
+    if ([section respondsToSelector:addCellSelector]) {
+        ((void (*)(id, SEL, id))objc_msgSend)(section, addCellSelector, cell);
+    }
+    
+    // 使用运行时调用 reloadTableView
+    SEL reloadSelector = @selector(reloadTableView);
+    if ([manager respondsToSelector:reloadSelector]) {
+        ((void (*)(id, SEL))objc_msgSend)(manager, reloadSelector);
+    }
+    
     objc_setAssociatedObject(controller, kSSSettingsEntryAssociatedKey, cell, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
