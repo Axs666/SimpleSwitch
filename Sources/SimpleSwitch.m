@@ -45,6 +45,8 @@
     _shouldSkipChangeAction = NO;
     _shouldAnimate = YES;
     
+    // 确保视图可以交互
+    self.userInteractionEnabled = YES;
     self.backgroundColor = [UIColor clearColor];
     self.clipsToBounds = NO;
     
@@ -65,8 +67,16 @@
         // 设置 knob
         [self setupKnob];
         
+        // 确保 knob 可以交互（但不拦截触摸）
+        if (self.knob) {
+            self.knob.userInteractionEnabled = NO;
+        }
+        
         // 添加手势
         [self setupGestures];
+        
+        NSLog(@"[SimpleSwitch] commonInit 完成, userInteractionEnabled=%@, gestures=%@", 
+              @(self.userInteractionEnabled), self.gestureRecognizers);
         
         // 更新外观 - 延迟到 layoutSubviews 中执行，避免 bounds 为零的问题
         // [self updateAppearance];
@@ -92,22 +102,49 @@
     [self.layer addSublayer:self.onBorder];
 }
 
+// 确保触摸事件能正确传递
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    // 如果视图不可交互或隐藏，返回 nil
+    if (!self.userInteractionEnabled || self.hidden || self.alpha < 0.01) {
+        return nil;
+    }
+    
+    // 检查触摸点是否在视图范围内
+    if ([self pointInside:point withEvent:event]) {
+        // 检查子视图
+        for (UIView *subview in [self.subviews reverseObjectEnumerator]) {
+            CGPoint subviewPoint = [self convertPoint:point toView:subview];
+            UIView *hitView = [subview hitTest:subviewPoint withEvent:event];
+            if (hitView && hitView.userInteractionEnabled) {
+                return hitView;
+            }
+        }
+        // 如果子视图不处理，返回自己
+        return self;
+    }
+    
+    return nil;
+}
+
 - (void)setupLines {
     // 左侧线条
     self.leftLine = [[UIView alloc] init];
     self.leftLine.backgroundColor = [UIColor systemGrayColor];
+    self.leftLine.userInteractionEnabled = NO; // 不拦截触摸
     [self addSubview:self.leftLine];
     
     // 右侧线条
     self.rightLine = [[UIView alloc] init];
     self.rightLine.backgroundColor = [UIColor systemGreenColor];
     self.rightLine.alpha = 0.0;
+    self.rightLine.userInteractionEnabled = NO; // 不拦截触摸
     [self addSubview:self.rightLine];
     
     // 镜像线条（用于动画效果）
     self.mirrorLine = [[UIView alloc] init];
     self.mirrorLine.backgroundColor = [UIColor systemGreenColor];
     self.mirrorLine.alpha = 0.0;
+    self.mirrorLine.userInteractionEnabled = NO; // 不拦截触摸
     [self addSubview:self.mirrorLine];
 }
 
@@ -120,13 +157,29 @@
 }
 
 - (void)setupGestures {
+    // 移除旧的手势（如果有）
+    if (self.panGesture) {
+        [self removeGestureRecognizer:self.panGesture];
+    }
+    if (self.tapGesture) {
+        [self removeGestureRecognizer:self.tapGesture];
+    }
+    
     // 拖动手势
     self.panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(panGestureOccurred:)];
+    self.panGesture.minimumNumberOfTouches = 1;
+    self.panGesture.maximumNumberOfTouches = 1;
     [self addGestureRecognizer:self.panGesture];
     
     // 点击手势
     self.tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapGestureOccurred:)];
+    self.tapGesture.numberOfTapsRequired = 1;
+    self.tapGesture.numberOfTouchesRequired = 1;
+    // 让点击手势在拖动手势失败时才触发
+    [self.tapGesture requireGestureRecognizerToFail:self.panGesture];
     [self addGestureRecognizer:self.tapGesture];
+    
+    NSLog(@"[SimpleSwitch] setupGestures 完成, pan=%@, tap=%@", self.panGesture, self.tapGesture);
 }
 
 - (double)borderWidth {
@@ -280,9 +333,12 @@
 }
 
 - (void)panGestureOccurred:(UIPanGestureRecognizer *)gesture {
+    NSLog(@"[SimpleSwitch] panGestureOccurred, state=%ld", (long)gesture.state);
+    
     CGPoint touchLocation = [gesture locationInView:self];
     
     if (gesture.state == UIGestureRecognizerStateBegan) {
+        NSLog(@"[SimpleSwitch] pan began at %@", NSStringFromCGPoint(touchLocation));
         _isOnBeforeDrag = _on;
         _dragging = YES;
         _moved = NO;
@@ -298,6 +354,7 @@
     } else if (gesture.state == UIGestureRecognizerStateEnded || 
                gesture.state == UIGestureRecognizerStateCancelled ||
                gesture.state == UIGestureRecognizerStateFailed) {
+        NSLog(@"[SimpleSwitch] pan ended, final state=%d", _on);
         [self.knob setExpanded:NO];
         _dragging = NO;
         _moved = NO;
@@ -312,6 +369,8 @@
 }
 
 - (void)tapGestureOccurred:(UITapGestureRecognizer *)gesture {
+    NSLog(@"[SimpleSwitch] tapGestureOccurred, state=%ld, dragging=%d", (long)gesture.state, _dragging);
+    
     if (_dragging) {
         return;
     }
