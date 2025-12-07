@@ -48,25 +48,31 @@
     self.backgroundColor = [UIColor clearColor];
     self.clipsToBounds = NO;
     
-    // 创建 layer delegate
-    self.layerDelegate = [[SimpleLayerDelegate alloc] init];
-    self.layerDelegate.animated = _shouldAnimate;
-    self.layer.delegate = self.layerDelegate;
-    
-    // 设置边框
-    [self setupBorders];
-    
-    // 设置线条
-    [self setupLines];
-    
-    // 设置 knob
-    [self setupKnob];
-    
-    // 添加手势
-    [self setupGestures];
-    
-    // 更新外观
-    [self updateAppearance];
+    @try {
+        // 创建 layer delegate
+        self.layerDelegate = [[SimpleLayerDelegate alloc] init];
+        if (self.layerDelegate) {
+            self.layerDelegate.animated = _shouldAnimate;
+            self.layer.delegate = self.layerDelegate;
+        }
+        
+        // 设置边框
+        [self setupBorders];
+        
+        // 设置线条
+        [self setupLines];
+        
+        // 设置 knob
+        [self setupKnob];
+        
+        // 添加手势
+        [self setupGestures];
+        
+        // 更新外观 - 延迟到 layoutSubviews 中执行，避免 bounds 为零的问题
+        // [self updateAppearance];
+    } @catch (NSException *exception) {
+        NSLog(@"[SimpleSwitch] commonInit 异常: %@", exception);
+    }
 }
 
 - (void)setupBorders {
@@ -134,33 +140,66 @@
 - (void)layoutSubviews {
     [super layoutSubviews];
     
-    CGFloat width = self.bounds.size.width;
-    CGFloat height = self.bounds.size.height;
-    CGFloat cornerRadius = height / 2;
-    CGFloat borderWidth = [self borderWidth];
-    CGFloat knobMargin = [self knobMargin];
+    // 如果 bounds 为零，跳过布局
+    if (CGRectIsEmpty(self.bounds)) {
+        return;
+    }
     
-    // 更新边框路径
-    CGRect borderRect = CGRectInset(self.bounds, borderWidth / 2, borderWidth / 2);
-    UIBezierPath *borderPath = [UIBezierPath bezierPathWithRoundedRect:borderRect cornerRadius:cornerRadius];
-    self.offBorder.path = borderPath.CGPath;
-    self.onBorder.path = borderPath.CGPath;
-    
-    // 更新线条
-    CGFloat lineHeight = 2.0;
-    CGFloat lineY = height / 2 - lineHeight / 2;
-    self.leftLine.frame = CGRectMake(knobMargin, lineY, width / 3, lineHeight);
-    self.rightLine.frame = CGRectMake(width * 2 / 3, lineY, width / 3 - knobMargin, lineHeight);
-    self.mirrorLine.frame = self.rightLine.frame;
-    
-    // 更新 knob 位置
-    CGFloat knobSize = height - knobMargin * 2;
-    CGFloat knobX = self.on ? (width - knobSize - knobMargin) : knobMargin;
-    self.knob.frame = CGRectMake(knobX, knobMargin, knobSize, knobSize);
-    [self.knob layoutSubviews];
+    @try {
+        CGFloat width = self.bounds.size.width;
+        CGFloat height = self.bounds.size.height;
+        CGFloat cornerRadius = height / 2;
+        CGFloat borderWidth = [self borderWidth];
+        CGFloat knobMargin = [self knobMargin];
+        
+        // 更新边框路径
+        CGRect borderRect = CGRectInset(self.bounds, borderWidth / 2, borderWidth / 2);
+        UIBezierPath *borderPath = [UIBezierPath bezierPathWithRoundedRect:borderRect cornerRadius:cornerRadius];
+        if (self.offBorder) {
+            self.offBorder.path = borderPath.CGPath;
+        }
+        if (self.onBorder) {
+            self.onBorder.path = borderPath.CGPath;
+        }
+        
+        // 更新线条
+        CGFloat lineHeight = 2.0;
+        CGFloat lineY = height / 2 - lineHeight / 2;
+        if (self.leftLine) {
+            self.leftLine.frame = CGRectMake(knobMargin, lineY, width / 3, lineHeight);
+        }
+        if (self.rightLine) {
+            self.rightLine.frame = CGRectMake(width * 2 / 3, lineY, width / 3 - knobMargin, lineHeight);
+        }
+        if (self.mirrorLine) {
+            self.mirrorLine.frame = self.rightLine.frame;
+        }
+        
+        // 更新 knob 位置
+        if (self.knob) {
+            CGFloat knobSize = height - knobMargin * 2;
+            CGFloat knobX = self.on ? (width - knobSize - knobMargin) : knobMargin;
+            self.knob.frame = CGRectMake(knobX, knobMargin, knobSize, knobSize);
+            [self.knob layoutSubviews];
+        }
+        
+        // 首次布局时更新外观
+        static BOOL hasInitialLayout = NO;
+        if (!hasInitialLayout) {
+            hasInitialLayout = YES;
+            [self updateAppearance];
+        }
+    } @catch (NSException *exception) {
+        NSLog(@"[SimpleSwitch] layoutSubviews 异常: %@", exception);
+    }
 }
 
 - (void)updateAppearance {
+    // 如果 view 还没有布局，bounds 为零，跳过更新
+    if (CGRectIsEmpty(self.bounds)) {
+        return;
+    }
+    
     BOOL shouldAnimate = _shouldAnimate && !_dragging;
     
     if (shouldAnimate) {
@@ -173,53 +212,68 @@
 }
 
 - (void)updateAppearanceAnimated:(BOOL)animated {
-    CGFloat knobMargin = [self knobMargin];
-    CGFloat width = self.bounds.size.width;
-    CGFloat knobSize = self.bounds.size.height - knobMargin * 2;
-    CGFloat knobX = self.on ? (width - knobSize - knobMargin) : knobMargin;
-    
-    if (animated) {
-        [UIView animateWithDuration:0.3 animations:^{
-            self.knob.frame = CGRectMake(knobX, knobMargin, knobSize, knobSize);
-        }];
-    } else {
-        self.knob.frame = CGRectMake(knobX, knobMargin, knobSize, knobSize);
+    // 如果 bounds 为零，跳过更新
+    if (CGRectIsEmpty(self.bounds)) {
+        return;
     }
     
-    // 更新 knob 状态
-    [self.knob setAnimated:animated];
-    [self.knob setOn:self.on];
-    [self.knob setExpanded:self.dragging];
-    
-    // 更新边框
-    if (animated) {
-        [CATransaction begin];
-        [CATransaction setAnimationDuration:0.3];
-        [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
-    } else {
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-    }
-    
-    if (self.on) {
-        self.offBorder.opacity = 0.0;
-        self.onBorder.opacity = 1.0;
-    } else {
-        self.offBorder.opacity = 1.0;
-        self.onBorder.opacity = 0.0;
-    }
-    
-    [CATransaction commit];
-    
-    // 更新线条
-    if (animated) {
-        [UIView animateWithDuration:0.3 animations:^{
-            self.leftLine.alpha = self.on ? 0.0 : 1.0;
-            self.rightLine.alpha = self.on ? 1.0 : 0.0;
-        }];
-    } else {
-        self.leftLine.alpha = self.on ? 0.0 : 1.0;
-        self.rightLine.alpha = self.on ? 1.0 : 0.0;
+    @try {
+        CGFloat knobMargin = [self knobMargin];
+        CGFloat width = self.bounds.size.width;
+        CGFloat knobSize = self.bounds.size.height - knobMargin * 2;
+        CGFloat knobX = self.on ? (width - knobSize - knobMargin) : knobMargin;
+        
+        if (self.knob) {
+            if (animated) {
+                [UIView animateWithDuration:0.3 animations:^{
+                    self.knob.frame = CGRectMake(knobX, knobMargin, knobSize, knobSize);
+                }];
+            } else {
+                self.knob.frame = CGRectMake(knobX, knobMargin, knobSize, knobSize);
+            }
+            
+            // 更新 knob 状态
+            [self.knob setAnimated:animated];
+            [self.knob setOn:self.on];
+            [self.knob setExpanded:self.dragging];
+        }
+        
+        // 更新边框
+        if (self.offBorder && self.onBorder) {
+            if (animated) {
+                [CATransaction begin];
+                [CATransaction setAnimationDuration:0.3];
+                [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
+            } else {
+                [CATransaction begin];
+                [CATransaction setDisableActions:YES];
+            }
+            
+            if (self.on) {
+                self.offBorder.opacity = 0.0;
+                self.onBorder.opacity = 1.0;
+            } else {
+                self.offBorder.opacity = 1.0;
+                self.onBorder.opacity = 0.0;
+            }
+            
+            [CATransaction commit];
+        }
+        
+        // 更新线条
+        if (self.leftLine && self.rightLine) {
+            if (animated) {
+                [UIView animateWithDuration:0.3 animations:^{
+                    self.leftLine.alpha = self.on ? 0.0 : 1.0;
+                    self.rightLine.alpha = self.on ? 1.0 : 0.0;
+                }];
+            } else {
+                self.leftLine.alpha = self.on ? 0.0 : 1.0;
+                self.rightLine.alpha = self.on ? 1.0 : 0.0;
+            }
+        }
+    } @catch (NSException *exception) {
+        NSLog(@"[SimpleSwitch] updateAppearanceAnimated 异常: %@", exception);
     }
 }
 
