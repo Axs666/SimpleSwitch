@@ -164,9 +164,9 @@
     BOOL shouldAnimate = _shouldAnimate && !_dragging;
     
     if (shouldAnimate) {
-        [UIView animateWithDuration:0.3 delay:0 usingOptions:UIViewAnimationOptionCurveEaseInOut animations:^{
+        [UIView animateWithDuration:0.3 animations:^{
             [self updateAppearanceAnimated:YES];
-        } completion:nil];
+        }];
     } else {
         [self updateAppearanceAnimated:NO];
     }
@@ -299,7 +299,10 @@
     _on = on;
     
     if (!_shouldSkipChangeAction && self.changeAction) {
-        self.changeAction(on);
+        void (^actionBlock)(BOOL) = self.changeAction;
+        if (actionBlock) {
+            actionBlock(on);
+        }
     }
 }
 
@@ -344,7 +347,7 @@
     // 云朵浮动动画
     if ([cloudIcon isKindOfClass:[UIView class]]) {
         UIView *cloud = (UIView *)cloudIcon;
-        [UIView animateWithDuration:2.0 delay:0 options:UIViewAnimationOptionRepeat | UIViewAnimationOptionAutoreverse | UIViewAnimationOptionCurveEaseInEaseOut animations:^{
+        [UIView animateWithDuration:2.0 delay:0 options:UIViewAnimationOptionRepeat | UIViewAnimationOptionAutoreverse | UIViewAnimationOptionCurveEaseInOut animations:^{
             cloud.transform = CGAffineTransformMakeTranslation(0, -5);
         } completion:nil];
     }
