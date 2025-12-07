@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'control' 
+      - 'Tweak.xm' 
     branches:
       - 'main'  # 仅在推送到 main 分支时触发
   workflow_dispatch:
