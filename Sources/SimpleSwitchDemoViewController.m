@@ -33,10 +33,13 @@ static NSString * const kSimpleSwitchDemoEnabledKey = @"com.wechat.simpleswitch.
             return;
         }
         simpleSwitch.translatesAutoresizingMaskIntoConstraints = NO;
+        simpleSwitch.userInteractionEnabled = YES; // 确保可以交互
         
         // 读取当前状态
         NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
         BOOL isEnabled = [defaults boolForKey:kSimpleSwitchDemoEnabledKey];
+        
+        // 先设置状态，再添加到视图，确保布局正确
         [simpleSwitch setOn:isEnabled animated:NO];
         
         // 设置回调
@@ -104,6 +107,16 @@ static NSString * const kSimpleSwitchDemoEnabledKey = @"com.wechat.simpleswitch.
             [descriptionLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:20],
             [descriptionLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20],
         ]];
+        
+        // 强制布局，确保开关能正确显示
+        [self.view setNeedsLayout];
+        [self.view layoutIfNeeded];
+        
+        // 延迟一点再更新外观，确保布局完成
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [simpleSwitch setNeedsLayout];
+            [simpleSwitch layoutIfNeeded];
+        });
     } @catch (NSException *exception) {
         NSLog(@"[SimpleSwitchPlugin] viewDidLoad 异常: %@", exception);
     }
