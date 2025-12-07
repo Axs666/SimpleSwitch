@@ -1,21 +1,37 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #import "Sources/SimpleSwitch.h"
-#import "Sources/NewSettingViewController.h"
+
+// 设置存储键值
+static NSString * const kSimpleSwitchDemoEnabledKey = @"com.wechat.simpleswitch.demo.enabled";
+
+// 前向声明函数
+static void addSimpleSwitchDemo(UIViewController *viewController);
 
 // Hook 微信设置界面，添加 SimpleSwitch 示例
-%hook NewSettingViewController
-
-- (void)viewDidLoad {
-    %orig;
-    
-    // 延迟添加开关，确保视图已加载
-    dispatch_async(dispatch_get_main_queue(), ^{
-        addSimpleSwitchDemo(self);
-    });
+// 使用运行时方法交换，避免需要头文件
+%ctor {
+    @autoreleasepool {
+        Class cls = objc_getClass("NewSettingViewController");
+        if (cls) {
+            Method originalMethod = class_getInstanceMethod(cls, @selector(viewDidLoad));
+            if (originalMethod) {
+                void (*originalImp)(id, SEL) = (void (*)(id, SEL))method_getImplementation(originalMethod);
+                
+                void (^swizzledBlock)(id) = ^(id self) {
+                    originalImp(self, @selector(viewDidLoad));
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        addSimpleSwitchDemo(self);
+                    });
+                };
+                
+                IMP swizzledImp = imp_implementationWithBlock(swizzledBlock);
+                method_setImplementation(originalMethod, swizzledImp);
+            }
+        }
+        NSLog(@"SimpleSwitchPlugin loaded");
+    }
 }
-
-%end
 
 // 辅助函数：添加 SimpleSwitch 演示
 static void addSimpleSwitchDemo(UIViewController *viewController) {
@@ -75,12 +91,6 @@ static void addSimpleSwitchDemo(UIViewController *viewController) {
         tableView.tableHeaderView = newHeader;
     } else {
         tableView.tableHeaderView = containerView;
-    }
-}
-
-%ctor {
-    @autoreleasepool {
-        NSLog(@"SimpleSwitchPlugin loaded");
     }
 }
 
