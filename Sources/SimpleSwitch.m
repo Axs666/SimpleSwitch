@@ -280,91 +280,100 @@
 }
 
 - (void)panGestureOccurred:(UIPanGestureRecognizer *)gesture {
-    CGPoint translation = [gesture translationInView:self];
-    CGPoint velocity = [gesture velocityInView:self];
+    CGPoint touchLocation = [gesture locationInView:self];
     
-    switch (gesture.state) {
-        case UIGestureRecognizerStateBegan: {
-            _isOnBeforeDrag = self.on;
-            _dragging = YES;
-            _moved = NO;
-            [self.knob setExpanded:YES];
-            break;
+    if (gesture.state == UIGestureRecognizerStateBegan) {
+        _isOnBeforeDrag = _on;
+        _dragging = YES;
+        _moved = NO;
+        [self.knob setExpanded:YES];
+    } else if (gesture.state == UIGestureRecognizerStateChanged) {
+        _moved = YES;
+        
+        if (touchLocation.x > self.bounds.size.width / 2 && !_on) {
+            [self setOn:YES];
+        } else if (touchLocation.x < self.bounds.size.width / 2 && _on) {
+            [self setOn:NO];
         }
-        case UIGestureRecognizerStateChanged: {
-            CGFloat knobMargin = [self knobMargin];
-            CGFloat knobSize = self.bounds.size.height - knobMargin * 2;
-            CGFloat minX = knobMargin;
-            CGFloat maxX = self.bounds.size.width - knobSize - knobMargin;
-            CGFloat currentX = self.knob.frame.origin.x;
-            CGFloat newX = currentX + translation.x;
-            
-            newX = MAX(minX, MIN(maxX, newX));
-            self.knob.frame = CGRectMake(newX, knobMargin, knobSize, knobSize);
-            
-            // 判断是否应该切换状态
-            CGFloat threshold = (maxX - minX) / 2;
-            BOOL shouldBeOn = newX > (minX + threshold);
-            
-            if (shouldBeOn != _isOnBeforeDrag) {
-                _moved = YES;
-                [self _setOn:shouldBeOn];
+    } else if (gesture.state == UIGestureRecognizerStateEnded || 
+               gesture.state == UIGestureRecognizerStateCancelled ||
+               gesture.state == UIGestureRecognizerStateFailed) {
+        [self.knob setExpanded:NO];
+        _dragging = NO;
+        _moved = NO;
+        
+        if (_on != _isOnBeforeDrag && self.changeAction) {
+            void (^actionBlock)(BOOL) = self.changeAction;
+            if (actionBlock) {
+                actionBlock(_on);
             }
-            
-            [gesture setTranslation:CGPointZero inView:self];
-            break;
         }
-        case UIGestureRecognizerStateEnded:
-        case UIGestureRecognizerStateCancelled: {
-            _dragging = NO;
-            [self.knob setExpanded:NO];
-            
-            // 根据速度和位置决定最终状态
-            CGFloat knobMargin = [self knobMargin];
-            CGFloat knobSize = self.bounds.size.height - knobMargin * 2;
-            CGFloat threshold = self.bounds.size.width / 2;
-            CGFloat currentX = self.knob.frame.origin.x + knobSize / 2;
-            
-            BOOL shouldToggle = NO;
-            if (fabs(velocity.x) > 500) {
-                // 快速滑动，根据方向切换
-                shouldToggle = velocity.x > 0 ? YES : NO;
-            } else {
-                // 慢速滑动，根据位置切换
-                shouldToggle = currentX > threshold;
-            }
-            
-            [self _setOn:shouldToggle];
-            [self updateAppearance];
-            break;
-        }
-        default:
-            break;
     }
 }
 
 - (void)tapGestureOccurred:(UITapGestureRecognizer *)gesture {
-    if (gesture.state == UIGestureRecognizerStateEnded) {
-        [self _setOn:!self.on];
-        [self updateAppearance];
+    if (_dragging) {
+        return;
     }
+    
+    _dragging = YES;
+    [self setOn:!_on];
+    _dragging = NO;
+}
+
+- (void)setOn:(BOOL)on {
+    if (_on == on) {
+        return;
+    }
+    _on = on;
+    [self _setOn:on];
 }
 
 - (void)_setOn:(BOOL)on {
-    if (_on == on) return;
-    _on = on;
-    
-    if (!_shouldSkipChangeAction && self.changeAction) {
+    // call the action closure
+    if (self.changeAction && !_shouldSkipChangeAction) {
         void (^actionBlock)(BOOL) = self.changeAction;
         if (actionBlock) {
             actionBlock(on);
         }
     }
-}
-
-- (void)setOn:(BOOL)on {
-    [self _setOn:on];
-    [self updateAppearance];
+    
+    BOOL shouldAnimate = (_shouldAnimate || _dragging);
+    
+    [self.layerDelegate setAnimated:shouldAnimate];
+    [self.knob setAnimated:shouldAnimate];
+    
+    self.knob.on = on;
+    
+    [UIView animateWithDuration:(shouldAnimate ? 0.4 : 0)
+                          delay:0
+         usingSpringWithDamping:1
+          initialSpringVelocity:0
+                        options:UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+                         CGFloat knobMargin = [self knobMargin];
+                         CGFloat knobSize = self.bounds.size.height - knobMargin * 2;
+                         CGFloat knobRadius = knobSize / 2;
+                         
+                         if (on) {
+                             self.knob.center = CGPointMake(self.bounds.size.width - knobRadius - knobMargin, 
+                                                           self.knob.center.y);
+                             self.backgroundColor = [UIColor systemGreenColor];
+                             self.offBorder.opacity = 0.0;
+                             self.onBorder.opacity = 1.0;
+                             self.leftLine.alpha = 0.0;
+                             self.rightLine.alpha = 1.0;
+                         } else {
+                             self.knob.center = CGPointMake(knobRadius + knobMargin, 
+                                                           self.knob.center.y);
+                             self.backgroundColor = [UIColor systemGrayColor];
+                             self.offBorder.opacity = 1.0;
+                             self.onBorder.opacity = 0.0;
+                             self.leftLine.alpha = 1.0;
+                             self.rightLine.alpha = 0.0;
+                         }
+                     }
+                     completion:nil];
 }
 
 - (void)setOn:(BOOL)on animated:(BOOL)animated {
