@@ -183,20 +183,22 @@
             [self.knob layoutSubviews];
         }
         
-        // 首次布局时更新外观
-        static BOOL hasInitialLayout = NO;
-        if (!hasInitialLayout) {
-            hasInitialLayout = YES;
-            [self updateAppearance];
-        }
+        // 布局完成后更新外观（每次布局都更新，确保状态正确）
+        [self updateAppearance];
     } @catch (NSException *exception) {
         NSLog(@"[SimpleSwitch] layoutSubviews 异常: %@", exception);
     }
 }
 
 - (void)updateAppearance {
-    // 如果 view 还没有布局，bounds 为零，跳过更新
+    // 如果 view 还没有布局，bounds 为零，延迟更新
     if (CGRectIsEmpty(self.bounds)) {
+        // 延迟到下一个运行循环再尝试
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (!CGRectIsEmpty(self.bounds)) {
+                [self updateAppearance];
+            }
+        });
         return;
     }
     
