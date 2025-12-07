@@ -1,9 +1,7 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #import "Sources/SimpleSwitch.h"
-
-// 设置存储键值
-static NSString * const kSimpleSwitchDemoEnabledKey = @"com.wechat.simpleswitch.demo.enabled";
+#import "Sources/NewSettingViewController.h"
 
 // Hook 微信设置界面，添加 SimpleSwitch 示例
 %hook NewSettingViewController
@@ -13,15 +11,17 @@ static NSString * const kSimpleSwitchDemoEnabledKey = @"com.wechat.simpleswitch.
     
     // 延迟添加开关，确保视图已加载
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self addSimpleSwitchDemo];
+        addSimpleSwitchDemo(self);
     });
 }
 
-%new
-- (void)addSimpleSwitchDemo {
+%end
+
+// 辅助函数：添加 SimpleSwitch 演示
+static void addSimpleSwitchDemo(UIViewController *viewController) {
     // 查找表格视图
     UITableView *tableView = nil;
-    for (UIView *subview in self.view.subviews) {
+    for (UIView *subview in viewController.view.subviews) {
         if ([subview isKindOfClass:[UITableView class]]) {
             tableView = (UITableView *)subview;
             break;
@@ -42,7 +42,8 @@ static NSString * const kSimpleSwitchDemoEnabledKey = @"com.wechat.simpleswitch.
     [containerView addSubview:label];
     
     // 创建 SimpleSwitch
-    SimpleSwitch *simpleSwitch = [[SimpleSwitch alloc] initWithCenter:CGPointMake(tableView.bounds.size.width - 40, 30)];
+    CGPoint center = CGPointMake(tableView.bounds.size.width - 40, 30);
+    SimpleSwitch *simpleSwitch = [[SimpleSwitch alloc] initWithCenter:center];
     simpleSwitch.frame = CGRectMake(tableView.bounds.size.width - 67, 15, 51, 31);
     
     // 读取当前状态
@@ -76,8 +77,6 @@ static NSString * const kSimpleSwitchDemoEnabledKey = @"com.wechat.simpleswitch.
         tableView.tableHeaderView = containerView;
     }
 }
-
-%end
 
 %ctor {
     @autoreleasepool {

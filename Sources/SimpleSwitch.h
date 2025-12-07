@@ -1,3 +1,5 @@
+#import <UIKit/UIKit.h>
+
 @class SimpleLayerDelegate, NSArray, UIColor, CAShapeLayer, UIView, Knob;
 
 @interface SimpleSwitch : UIView {
@@ -25,18 +27,19 @@
 - (double)borderWidth;
 - (double)knobMargin;
 - (id)setupKnob;
-- (id)initWithCenter:(struct CGPoint { double x0; double x1; })a0;
+- (id)initWithCenter:(CGPoint)center;
 - (void)commonInit;
 - (void)panGestureOccurred:(id)a0;
 - (id)initWithCoder:(id)a0;
-- (id)initWithFrame:(struct CGRect { struct CGPoint { double x0; double x1; } x0; struct CGSize { double x0; double x1; } x1; })a0;
+- (id)initWithFrame:(CGRect)frame;
 - (void)tapGestureOccurred:(id)a0;
 - (void)_setOn:(BOOL)a0;
+- (void)setOn:(BOOL)on;
+- (void)setOn:(BOOL)on animated:(BOOL)animated;
 - (void)blockChangeActionAnimated:(BOOL)a0;
 - (void)unblockChangeAction;
 - (void)animateCloudFlyInAndFloat:(id)a0;
 - (void)startCloudFloatingAnimation:(id)a0;
 - (void)startSparkleBlinkAnimation:(id)a0;
-- (void).cxx_destruct;
 
 @end

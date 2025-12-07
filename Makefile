@@ -18,6 +18,7 @@ SimpleSwitchPlugin_FILES = Tweak.xm \
 # 编译选项
 SimpleSwitchPlugin_CFLAGS = -fobjc-arc -Wno-error -Wno-nonnull -Wno-deprecated-declarations -Wno-incompatible-pointer-types \
                     -I$(THEOS_PROJECT_DIR)/Sources \
+                    -I$(THEOS_PROJECT_DIR)/../NewFeature/Headers \
                     -mios-version-min=14.5
 
 # 框架依赖
