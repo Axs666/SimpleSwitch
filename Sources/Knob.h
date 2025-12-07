@@ -1,4 +1,4 @@
-@class UIView;
+#import <UIKit/UIKit.h>
 
 @interface Knob : UIView {
     BOOL _shouldAnimate;
@@ -11,11 +11,10 @@
 - (double)subviewMargin;
 - (id)sunLayer;
 - (id)moonLayer;
-- (id)initWithFrame:(struct CGRect { struct CGPoint { double x0; double x1; } x0; struct CGSize { double x0; double x1; } x1; })a0;
+- (id)initWithFrame:(CGRect)frame;
 - (void)layoutSubviews;
 - (void)setAnimated:(BOOL)a0;
 - (void)_setOn:(BOOL)a0;
 - (void)_setExpanded:(BOOL)a0;
-- (void).cxx_destruct;
 
 @end
