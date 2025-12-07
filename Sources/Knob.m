@@ -81,59 +81,70 @@
     _shouldAnimate = animated;
 }
 
-- (void)_setOn:(BOOL)on {
-    if (_on == on) return;
-    _on = on;
-    
-    [self updateLayers];
-}
-
 - (void)setOn:(BOOL)on {
+    if (_on == on) {
+        return;
+    }
+    _on = on;
     [self _setOn:on];
 }
 
-- (void)_setExpanded:(BOOL)expanded {
-    if (_expanded == expanded) return;
-    _expanded = expanded;
+- (void)_setOn:(BOOL)on {
+    [UIView animateWithDuration:(_shouldAnimate ? 0.8 : 0)
+                          delay:0
+         usingSpringWithDamping:1
+          initialSpringVelocity:0
+                        options:UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+                         if (on) {
+                             self.sunLayer.hidden = NO;
+                             self.moonLayer.hidden = YES;
+                             self.sunLayer.opacity = 1.0;
+                             self.moonLayer.opacity = 0.0;
+                         } else {
+                             self.sunLayer.hidden = YES;
+                             self.moonLayer.hidden = NO;
+                             self.sunLayer.opacity = 0.0;
+                             self.moonLayer.opacity = 1.0;
+                         }
+                         
+                         BOOL cache = self.isExpanded;
+                         [self _setExpanded:cache];
+                     }
+                     completion:nil];
     
-    [self updateLayers];
+    [UIView animateWithDuration:(_shouldAnimate ? 0.4 : 0)
+                          delay:0
+         usingSpringWithDamping:1
+          initialSpringVelocity:0
+                        options:UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+                         // 可以添加旋转动画
+                         self.transform = CGAffineTransformMakeRotation(M_PI * ((on) ? 0.1 : -0.1));
+                     }
+                     completion:nil];
 }
 
 - (void)setExpanded:(BOOL)expanded {
+    if (_expanded == expanded) {
+        return;
+    }
+    _expanded = expanded;
     [self _setExpanded:expanded];
 }
 
-- (void)updateLayers {
-    BOOL shouldAnimate = _shouldAnimate;
+- (void)_setExpanded:(BOOL)expanded {
+    CGFloat scale = expanded ? 1.15 : 1.0;
     
-    if (shouldAnimate) {
-        [CATransaction begin];
-        [CATransaction setAnimationDuration:0.3];
-        [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
-    } else {
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-    }
-    
-    if (self.on) {
-        self.sunLayer.hidden = NO;
-        self.moonLayer.hidden = YES;
-        self.sunLayer.opacity = 1.0;
-        self.moonLayer.opacity = 0.0;
-    } else {
-        self.sunLayer.hidden = YES;
-        self.moonLayer.hidden = NO;
-        self.sunLayer.opacity = 0.0;
-        self.moonLayer.opacity = 1.0;
-    }
-    
-    if (self.expanded) {
-        self.transform = CGAffineTransformMakeScale(1.1, 1.1);
-    } else {
-        self.transform = CGAffineTransformIdentity;
-    }
-    
-    [CATransaction commit];
+    [UIView animateWithDuration:(_shouldAnimate ? 0.8 : 0)
+                          delay:0
+         usingSpringWithDamping:1
+          initialSpringVelocity:0
+                        options:UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+                         self.transform = CGAffineTransformMakeScale(scale, scale);
+                     }
+                     completion:nil];
 }
 
 @end
