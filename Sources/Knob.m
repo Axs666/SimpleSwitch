@@ -108,7 +108,7 @@
                              self.moonLayer.opacity = 1.0;
                          }
                          
-                         BOOL cache = self.isExpanded;
+                         BOOL cache = self.expanded;
                          [self _setExpanded:cache];
                      }
                      completion:nil];
